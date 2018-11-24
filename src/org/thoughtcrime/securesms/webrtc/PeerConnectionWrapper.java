@@ -34,18 +34,33 @@ import static org.thoughtcrime.securesms.webrtc.CameraState.Direction.FRONT;
 import static org.thoughtcrime.securesms.webrtc.CameraState.Direction.NONE;
 import static org.thoughtcrime.securesms.webrtc.CameraState.Direction.PENDING;
 
+/**
+ * 点对点连接包装类
+ */
 public class PeerConnectionWrapper {
   private static final String TAG = PeerConnectionWrapper.class.getSimpleName();
 
+  // 默认的ICE服务器地址
   private static final PeerConnection.IceServer STUN_SERVER = new PeerConnection.IceServer("stun:stun1.l.google.com:19302");
 
+  /** PeerConnection 接口代表一个由本地计算机到远端的WebRTC连接。该接口提供了创建，保持，监控，关闭连接的方法的实现 */
   @NonNull  private final PeerConnection peerConnection;
-  @NonNull  private final AudioTrack     audioTrack;
+  @NonNull  private final AudioTrack     audioTrack;  //AudioTrack是AudioSource的封装，方便他们的播放和传输：
   @NonNull  private final AudioSource    audioSource;
   @NonNull  private final Camera         camera;
   @Nullable private final VideoSource    videoSource;
-  @Nullable private final VideoTrack     videoTrack;
+  @Nullable private final VideoTrack     videoTrack;  //VideoTrack是VideoSource的封装，方便他们的播放和传输：
 
+  /**
+   * 节点连接包装类
+   * @param context               上下文
+   * @param factory               节点连接工厂类，负责创建节点连接
+   * @param observer              节点连接观察者对象，负责监听节点连接的状态变化
+   * @param localRenderer         本地视频渲染器
+   * @param turnServers           IceServer服务器地址
+   * @param cameraEventListener   摄像头时间监听
+   * @param hideIp                是否隐藏IP
+   */
   public PeerConnectionWrapper(@NonNull Context                        context,
                                @NonNull PeerConnectionFactory          factory,
                                @NonNull PeerConnection.Observer        observer,
@@ -55,8 +70,8 @@ public class PeerConnectionWrapper {
                                boolean                                 hideIp)
   {
     List<PeerConnection.IceServer> iceServers = new LinkedList<>();
-    iceServers.add(STUN_SERVER);
-    iceServers.addAll(turnServers);
+    iceServers.add(STUN_SERVER);      // 添加默认的STUN服务器地址
+    iceServers.addAll(turnServers);   // 添加自定义的STUN服务器地址
 
     MediaConstraints                constraints      = new MediaConstraints();
     MediaConstraints                audioConstraints = new MediaConstraints();
@@ -76,6 +91,8 @@ public class PeerConnectionWrapper {
     this.peerConnection.setAudioPlayout(false);
     this.peerConnection.setAudioRecording(false);
 
+    // 其实 VideoTrack/AudioTrack 已经可以播放了，不过我们先不考虑本地播放。那么如果要把他们发送到对方客户端，我们需要把他们添加到媒体流中：
+    // 然后，如果有建立好的连接通道，我们就可以把 mediaStream 发送出去了。
     MediaStream mediaStream = factory.createLocalMediaStream("ARDAMS");
     this.audioSource = factory.createAudioSource(audioConstraints);
     this.audioTrack  = factory.createAudioTrack("ARDAMSa0", audioSource);
